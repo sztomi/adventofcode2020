@@ -63,13 +63,11 @@ fn get_input() -> Result<Vec<Entry>> {
 
 fn main() -> Result<()> {
   let input = get_input()?;
-  let valid_cnt = input
-    .iter()
-    .fold(0, |acc, item| if item.is_valid() { acc + 1 } else { acc });
+  let valid_cnt = input.iter().filter(|item| item.is_valid()).count();
   println!("Answer (part1): {}", valid_cnt);
-  let valid_cnt = input
-    .iter()
-    .fold(0, |acc, item| if item.is_valid2() { acc + 1 } else { acc });
+
+  let valid_cnt = input.iter().filter(|item| item.is_valid2()).count();
   println!("Answer (part2): {}", valid_cnt);
+
   Ok(())
 }
