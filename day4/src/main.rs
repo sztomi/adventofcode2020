@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use anyhow::Result;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 const INPUT_FILE: &str = "input.txt";
 
@@ -75,6 +77,87 @@ impl Passport {
     );
     true
   }
+
+  fn is_valid2(&self) -> bool {
+    if !self.is_valid() {
+      return false;
+    }
+
+    macro_rules! validate_format {
+      ($($field:ident => $rgx:expr),*) => {
+        $(
+          {{
+            lazy_static! {
+              static ref RE: Regex = Regex::new($rgx).unwrap();
+            }
+            if !RE.is_match(&self.$field.as_ref().unwrap()) {{
+              return false;
+            }}
+          }}
+        )*
+      }
+    };
+    validate_format!(
+      passport_id => r"^\d{9}$",
+      birth_year => r"^\d{4}$",
+      issue_year => r"^\d{4}$",
+      expiration_year => r"^\d{4}$",
+      height => r"^\d+(cm|in)$",
+      hair_color => r"^#[0-9a-f]{6}$",
+      eye_color => r"^(amb|blu|brn|gry|grn|hzl|oth)$"
+    );
+
+    // at this point we know all Options are Somes, so unwrapping to our
+    // hearts content is fine!
+    macro_rules! validate_limits {
+      ($($field:ident => [$low:expr, $high:expr]),*) => {
+        $(
+          {{
+            if let Ok(val) = self.$field.as_ref().unwrap().parse::<i32>() {{
+              if val < $low || val > $high {{
+                return false;
+              }}
+            }}
+            else {{
+              return false;
+            }}
+          }}
+        )*
+      }
+    };
+
+    validate_limits!(
+      birth_year => [1920, 2002],
+      issue_year => [2010, 2020],
+      expiration_year => [2020, 2030]
+    );
+
+    lazy_static! {
+      static ref RE: Regex = Regex::new(r"(\d+)(cm|in)").unwrap();
+    };
+
+    if let Some(cap) = RE.captures(&self.height.as_ref().unwrap()) {
+      if &cap[2] == "cm" {
+        if let Ok(num) = cap[1].to_string().parse::<i32>() {
+          if num < 150 || num > 193 {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      } else if &cap[2] == "in" {
+        if let Ok(num) = cap[1].to_string().parse::<i32>() {
+          if num < 59 || num > 76 {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+
+    true
+  }
 }
 
 fn get_input() -> Result<Vec<Passport>> {
@@ -103,5 +186,8 @@ fn main() -> Result<()> {
   let input = get_input()?;
   let valid_cnt = input.iter().filter(|p| p.is_valid()).count();
   println!("Answer (part1): {}", valid_cnt);
+
+  let valid_cnt = input.iter().filter(|p| p.is_valid2()).count();
+  println!("Answer (part2): {}", valid_cnt);
   Ok(())
 }
